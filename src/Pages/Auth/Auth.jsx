@@ -1,5 +1,5 @@
 import React, { useState, useContext } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import styles from "./Auth.module.css";
 import { auth } from "../../Utility/firebase";
 import {
@@ -19,7 +19,7 @@ function Auth() {
   });
   const [{ user }, dispatch] = useContext(DataContext);
   const navigate = useNavigate();
-  const navStateDate = useLocation()
+
   // console.log(user);
 
   const authHandler = async (e) => {
@@ -33,7 +33,7 @@ function Auth() {
             user: userInfo.user,
           });
           setLoading({ ...loading, signIn: false });
-          navigate(navStateDate?.state?.redirect || "/");
+          navigate("/");
         })
         .catch((err) => {
           setError(err.message);
@@ -48,7 +48,7 @@ function Auth() {
             user: userInfo.user,
           });
           setLoading({ ...loading, signUp: false });
-          navigate(navStateDate?.state?.redirect || "/");
+          navigate("/");
         })
         .catch((err) => {
           setError(err.message);
@@ -67,18 +67,6 @@ function Auth() {
       </Link>
       <div className={styles.login__container}>
         <h1>Sign-In</h1>
-        {navStateDate.state.msg && (
-          <small
-            style={{
-              padding: "5px",
-              textAlign: "center",
-              color: "red",
-              fontWeight: "bold",
-            }}
-          >
-            {navStateDate?.state?.msg}
-          </small>
-        )}
         {error && (
           <small style={{ paddingTop: "5px", color: "red" }}>{error}</small>
         )}
