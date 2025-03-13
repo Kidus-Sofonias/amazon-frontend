@@ -12,32 +12,54 @@ import { useNavigate } from "react-router-dom";
 import { Type } from "../../Utility/action.type";
 
 function Payment() {
+  // Destructure user and basket from DataContext using useContext hook
   const [{ user, basket }, dispatch] = useContext(DataContext);
+
+  // Calculate the total number of items in the basket
   const totalItem =
     basket?.reduce((amount, item) => item.amount + amount, 0) || 0;
+
+  // Calculate the total price of items in the basket
   const totalPrice = basket.reduce(
     (amount, item) => item.price * item.amount + amount,
     0
   );
+
+  // Initialize Stripe and Elements hooks
   const stripe = useStripe();
   const elements = useElements();
+
+  // Initialize useNavigate hook for navigation
   const navigate = useNavigate();
+
+  // State to handle card errors
   const [cardError, setCardError] = useState(null);
+
+  // Function to handle changes in the CardElement and set card errors
   const handleChange = (e) => {
     e?.error?.message ? setCardError(e?.error?.message) : setCardError("");
   };
+
+  // State to handle processing state
   const [processing, setProcessing] = useState(false);
+
+  // Function to handle payment submission
   const handlePayment = async (e) => {
     e.preventDefault();
 
     try {
       setProcessing(true);
+
+      // Make a POST request to create a payment intent
       const response = await axiosInstance({
         method: "POST",
         url: `/payment/create?total=${totalPrice * 100}`,
       });
+
+      // Get the client secret from the response
       const clientSecret = response.data?.clientSecret;
 
+      // Confirm the card payment using Stripe
       const paymentIntent = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
@@ -46,6 +68,12 @@ function Payment() {
 
       console.log("Payment Intent:", paymentIntent);
 
+      // Ensure the amount is not undefined
+      if (paymentIntent.paymentIntent.amount === undefined) {
+        throw new Error("Payment amount is undefined");
+      }
+
+      // Save the order details in the database
       await db
         .collection("users")
         .doc(user.uid)
@@ -53,12 +81,17 @@ function Payment() {
         .doc(paymentIntent.id)
         .set({
           basket: basket,
-          amount: paymentIntent.amount,
-          created: paymentIntent.created,
+          amount: paymentIntent.paymentIntent.amount,
+          created: paymentIntent.paymentIntent.created,
         });
-      dispatch({type:Type.EMPTY_BASKET})
+
+      // Dispatch an action to empty the basket
+      dispatch({ type: Type.EMPTY_BASKET });
+
       setProcessing(false);
       console.log("Navigating to /orders");
+
+      // Navigate to the orders page with a success message
       navigate("/orders", { state: { msg: "You have placed new Order" } });
     } catch (error) {
       console.log(error);
